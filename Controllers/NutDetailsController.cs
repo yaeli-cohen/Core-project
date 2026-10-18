@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using core.Models;
+using core.Interfaces;
 
 namespace core.Controllers;
 
@@ -7,42 +8,60 @@ namespace core.Controllers;
 [Route("[controller]")]
 public class NutDetailsController : ControllerBase
 {
-    private static readonly string[] NutName = new[]
+    private readonly INutService _nutService;
+
+    public NutDetailsController(INutService nutService)
     {
-        "cashew", "Black sunflower seeds", "Pistachio", "peanuts", "Almonds", "walnut", "Watermelon seeds"
-    };
-    private static List<NutDetails>? arr;
-    public NutDetailsController()
-    {
-        arr = Enumerable.Range(1, 5).Select(index => new NutDetails
-        {
-            Id = index,
-            Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index+(index*4))),
-            Weight = Random.Shared.Next(100,1000),
-            Name = NutName[Random.Shared.Next(NutName.Length)]
-        }).ToList();
+        _nutService = nutService;
     }
-
-
-
 
     [HttpGet]
-    public IEnumerable<NutDetails?> Get()
+    public ActionResult<IEnumerable<NutDetails>> Get()
     {
-        return arr;
+        return _nutService.GetAll();
     }
 
-
-
-   [HttpGet("{id}")]
+    [HttpGet("{id}")]
     public ActionResult<NutDetails> Get(int id)
     {
-        //TODO basic checks
-        var res = arr?.FirstOrDefault(N => N.Id == id); 
+        var nut = _nutService.Get(id);
 
-        if (res == null)
+        if (nut is null)
             return NotFound();
-        
-        return res;
+
+        return nut;
     }
+
+    [HttpPost]
+    public ActionResult<NutDetails> Create(NutDetails nut)
+    {
+        _nutService.Add(nut);
+
+        return CreatedAtAction(nameof(Get), new { id = nut.Id }, nut);
     }
+
+    [HttpPut("{id}")]
+    public IActionResult Update(int id, NutDetails nut)
+    {
+        if (id != nut.Id)
+            return BadRequest();
+
+        if (_nutService.Get(id) is null)
+            return NotFound();
+
+        _nutService.Update(id, nut);
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public IActionResult Delete(int id)
+    {
+        if (_nutService.Get(id) is null)
+            return NotFound();
+
+        _nutService.Delete(id);
+
+        return NoContent();
+    }
+}
